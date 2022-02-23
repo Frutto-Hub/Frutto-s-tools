@@ -9,7 +9,7 @@
 1. Auto smooth angle can be changed by user
 
 # Installation
-1. Click on "MeshOptimiser_v.X.X.X.zip" file below on this page, this will downlad the MeshOptimiser_v.X.X.X.zip file on your computer
+1. Click on "MeshOptimiser_v.X.X.X.zip" file on [this](https://github.com/Frutto-Hub/Mesh-Optimiser/releases/tag/1.0.0) page, it will downlad the MeshOptimiser_v.X.X.X.zip file on your computer
 2. Go to Blender -> Edit -> Preferences -> Add-Ons -> Install > find "MeshOptimiser_v.X.X.X.zip" file and click install
 3. Mesh Optimiser addon will appear in addon list. Tick the check-box to enable it
 
