@@ -1,6 +1,6 @@
 # Mesh-Optimiser
 ### Simple blender addon for fast mesh optimisation
-# What does this addon does?
+# What does this addon do?
 1. Affects **only** on all selected mesh-type objects
 1. Removes all double vertices with maximum distance of 0.0001m from the mesh
 1. Makes 'tris to quads' operation with compare UV's option enabled
