@@ -10,9 +10,9 @@ bl_info = {
     "location": "3D View > Properties > Mesh Optimiser",
     "description": "Simple Mesh Optimiser addon",
     "warning": "",
-    "wiki_url": "https://github.com/AnimNyan/UEShaderScript",
+    "doc_url": "https://github.com/Frutto-Hub/Mesh-Optimiser",
     "category": "Object",
-    "tracker_url": "https://github.com/AnimNyan/UEShaderScript"
+    "support": "COMMUNITY"
 }
 
 def register():
