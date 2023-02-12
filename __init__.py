@@ -74,6 +74,11 @@ class FT_scene_props(PropertyGroup):
         description='Apply LocRocScale after translation',
         default=True,
     )
+    time: StringProperty(
+        name='Time',
+        description='Time for FT',
+        default=''
+    )
 
 
 # operators ------------------------------------------------------------------------------------------------------------
@@ -170,7 +175,7 @@ class FT_OT_loc_rot_scale_to_active_object(Operator):
         return {'FINISHED'}
 
 
-class FT_OT_Test(Operator):
+class FT_OT_test(Operator):
     bl_idname = "ft.test"  # important since its how bpy.ops.import_test.some_data is constructed
     bl_label = "Test opearator"
 
@@ -181,14 +186,61 @@ class FT_OT_Test(Operator):
 
 
 class FT_OT_time_update(Operator):
-    bl_idname = "ft.test_time"
+    bl_idname = "ft.time_update"
     bl_label = "Update time"
 
     def execute(self, context):
         props = context.scene.ft_props
 
         current_time = datetime.datetime.now()
-        props.last_database_updated = current_time.strftime("%Y %b %d, %H:%M:%S")
+        props.time = current_time.strftime("%Y %b %d, %H:%M:%S")
+
+        return {'FINISHED'}
+
+
+class FT_OT_remove_mesh_without_uv(Operator):
+    bl_idname = "ft.remove_mesh_without_uv"
+    bl_label = "Remove all meshes without UV map"
+
+    def execute(self, context):
+        props = context.scene.ft_props
+        bpy.ops.object.select_all(action='DESELECT')
+
+        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+
+        for ob in objects:
+            uv_layers_names = [uv.name for uv in ob.data.uv_layers]
+            print(f'{ob.name=}, {uv_layers_names=}')
+            if not uv_layers_names:
+                bpy.data.objects[ob.name].select_set(True)  # Blender 2.8x
+                bpy.ops.object.delete()
+
+        return {'FINISHED'}
+
+
+class FT_OT_remove_useless_uv(Operator):
+    bl_idname = "ft.remove_useless_uv"
+    bl_label = "Remove useless UV map"
+
+    def execute(self, context):
+        props = context.scene.ft_props
+        bpy.ops.object.select_all(action='DESELECT')
+
+        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+
+        for ob in objects:
+            uv_layers_names = [uv.name for uv in bpy.data.meshes[ob.name].uv_layers]
+            print(f'{ob.name=}, {uv_layers_names=}')
+            for uv in uv_layers_names:
+                if uv != 'uv_2':
+                    ob.data.uv_layers[uv].active = True
+                try:
+                    bpy.ops.mesh.uv_texture_remove()
+                except RuntimeError:
+                    continue
+
+        # if 'uv_2' in uv_layers_names:
+        #     bpy.data.meshes[ob.name].uv_layers["uv_2"].active_render = True
 
         return {'FINISHED'}
 
@@ -201,6 +253,20 @@ class FT_common_panel:
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'FT'
+
+
+class FT_PT_ninja_ripper(FT_common_panel, Panel):
+    bl_label = 'Ninja ripper output fix'
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.ft_props
+
+        row = layout.row()
+        row.operator('ft.remove_mesh_without_uv')
+
+        row = layout.row()
+        row.operator('ft.remove_useless_uv')
 
 
 class FT_PT_mesh_optimisation(FT_common_panel, Panel):
@@ -275,7 +341,13 @@ class FT_PT_test(FT_common_panel, Panel):
         props = context.scene.ft_props
 
         row = layout.row()
-        row.operator('ft.test_time')
+        row.operator('ft.test')
+
+        row = layout.row()
+        row.operator('ft.time_update')
+
+        row = layout.row()
+        row.label(text=f'Last updated: {props.time}', icon='TEMP')
 
 
 # panels end
@@ -285,11 +357,14 @@ classes = [
     FT_OT_mesh_optimisation,
     FT_OT_reset_opt_params,
     FT_OT_loc_rot_scale_to_active_object,
-    FT_OT_Test,
+    FT_OT_test,
     FT_OT_time_update,
+    FT_OT_remove_mesh_without_uv,
+    FT_OT_remove_useless_uv,
     FT_PT_mesh_optimisation,
     FT_PT_mesh_translation,
     FT_PT_test,
+    FT_PT_ninja_ripper,
 ]
 
 
