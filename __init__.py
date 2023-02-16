@@ -199,15 +199,12 @@ class FT_OT_time_update(Operator):
 
 
 class FT_OT_remove_mesh_without_uv(Operator):
-    bl_idname = "ft.remove_mesh_without_uv"
-    bl_label = "Remove all meshes without UV map"
+    bl_idname = "ft.remove_all_meshes_with_no_uv_map"
+    bl_label = "Remove all meshes with no UV map"
 
     def execute(self, context):
-        props = context.scene.ft_props
         bpy.ops.object.select_all(action='DESELECT')
-
         objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
-
         for ob in objects:
             uv_layers_names = [uv.name for uv in ob.data.uv_layers]
             print(f'{ob.name=}, {uv_layers_names=}')
@@ -245,6 +242,22 @@ class FT_OT_remove_useless_uv(Operator):
         return {'FINISHED'}
 
 
+class FT_OT_remove_mesh_without_material(Operator):
+    bl_idname = "ft.remove_meshes_with_no_materials"
+    bl_label = "Remove all meshes with no materials"
+
+    def execute(self, context):
+        bpy.ops.object.select_all(action='DESELECT')
+        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+        for ob in objects:
+            ob_materials = list(ob.material_slots)
+            if not ob_materials:
+                ob.select_set(True)
+                bpy.ops.object.delete(use_global=True)
+
+        return {'FINISHED'}
+
+
 # operators end
 
 
@@ -263,7 +276,10 @@ class FT_PT_ninja_ripper(FT_common_panel, Panel):
         props = context.scene.ft_props
 
         row = layout.row()
-        row.operator('ft.remove_mesh_without_uv')
+        row.operator('ft.remove_meshes_with_no_materials')
+
+        row = layout.row()
+        row.operator('ft.remove_all_meshes_with_no_uv_map')
 
         row = layout.row()
         row.operator('ft.remove_useless_uv')
@@ -319,8 +335,9 @@ class FT_PT_mesh_translation(FT_common_panel, Panel):
         row = layout.row()
         row.label(text='Change LocRotScale of selected objects to active object')
 
-        row = layout.row()
-        row.label(text=f'Active object: {context.active_object.name}')
+        if context.active_object:
+            row = layout.row()
+            row.label(text=f'Active object: {context.active_object.name}')
 
         row = layout.row()
         obj_count = 0 if len(context.selected_objects) == 0 else len(context.selected_objects) - 1
@@ -361,6 +378,7 @@ classes = [
     FT_OT_time_update,
     FT_OT_remove_mesh_without_uv,
     FT_OT_remove_useless_uv,
+    FT_OT_remove_mesh_without_material,
     FT_PT_mesh_optimisation,
     FT_PT_mesh_translation,
     FT_PT_test,
