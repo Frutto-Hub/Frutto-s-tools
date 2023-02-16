@@ -258,6 +258,42 @@ class FT_OT_remove_mesh_without_material(Operator):
         return {'FINISHED'}
 
 
+class FT_OT_fix_rotation(Operator):
+    bl_idname = "ft.fix_rotation"
+    bl_label = "Fix rotation"
+
+    def execute(self, context):
+        bpy.ops.view3d.view_axis(type='TOP', align_active=True)
+        bpy.ops.object.editmode_toggle()
+        bpy.ops.object.empty_add(type='PLAIN_AXES', align='VIEW')
+        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=False)
+
+        bpy.ops.object.rotation_clear(clear_delta=False)
+        bpy.ops.object.location_clear(clear_delta=False)
+        bpy.ops.object.scale_clear(clear_delta=False)
+        bpy.context.object.rotation_euler[0] = -1.5708
+
+        return {'FINISHED'}
+
+
+class FT_OT_fix_mirror(Operator):
+    bl_idname = "ft.fix_mirror"
+    bl_label = "Fix mirror"
+
+    def execute(self, context):
+        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.transform.resize(value=(-1, 1, 1), orient_type='GLOBAL',
+                                 orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL',
+                                 constraint_axis=(True, False, False), mirror=False, use_proportional_edit=False,
+                                 proportional_edit_falloff='SMOOTH', proportional_size=1,
+                                 use_proportional_connected=False, use_proportional_projected=False, snap=False,
+                                 snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST',
+                                 use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True,
+                                 use_snap_selectable=False)
+        return {'FINISHED'}
+
+
 # operators end
 
 
@@ -274,6 +310,12 @@ class FT_PT_ninja_ripper(FT_common_panel, Panel):
     def draw(self, context):
         layout = self.layout
         props = context.scene.ft_props
+
+        row = layout.row()
+        row.operator('ft.fix_rotation')
+
+        row = layout.row()
+        row.operator('ft.fix_mirror')
 
         row = layout.row()
         row.operator('ft.remove_meshes_with_no_materials')
@@ -379,6 +421,8 @@ classes = [
     FT_OT_remove_mesh_without_uv,
     FT_OT_remove_useless_uv,
     FT_OT_remove_mesh_without_material,
+    FT_OT_fix_rotation,
+    FT_OT_fix_mirror,
     FT_PT_mesh_optimisation,
     FT_PT_mesh_translation,
     FT_PT_test,
