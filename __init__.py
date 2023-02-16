@@ -297,6 +297,7 @@ class FT_OT_fix_mirror(Operator):
 # operators end
 
 
+
 # panels ---------------------------------------------------------------------------------------------------------------
 class FT_common_panel:
     bl_space_type = 'VIEW_3D'
