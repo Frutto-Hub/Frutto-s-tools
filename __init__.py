@@ -79,28 +79,63 @@ class FT_scene_props(PropertyGroup):
         description='Time for FT',
         default=''
     )
+    selection_only_for_optimisation: BoolProperty(
+        name='Only selected objects',
+        description='Check if you want to affect only selected objects',
+        default=True,
+    )
+    selection_only_for_uv_set: BoolProperty(
+        name='Only selected objects',
+        description='Check if you want to affect only selected objects',
+        default=True,
+    )
+    selection_only_for_mesh_removal: BoolProperty(
+        name='Only selected objects',
+        description='Check if you want to affect only selected objects',
+        default=True,
+    )
+    remove_mesh_with_no_material: BoolProperty(
+        name='No materials',
+        description='Check if you want to remove objects with no materials',
+        default=True,
+    )
+    remove_mesh_with_no_uv: BoolProperty(
+        name='No UV',
+        description='Check if you want to remove objects with no YVs',
+        default=True,
+    )
+    desired_uv_map: StringProperty(
+        name='Desired UV',
+        description='Enter desired UV',
+        default=''
+    )
 
 
 # operators ------------------------------------------------------------------------------------------------------------
 
-class FT_OT_mesh_optimisation(Operator):
-    bl_idname = "ft.optimise_mesh"  # important since its how bpy.ops.import_test.some_data is constructed
-    bl_label = "Optimise Mesh"
+class FT_OT_optimise_objects(Operator):
+    bl_idname = "ft.optimise_objects"
+    bl_label = "Optimise objects"
 
     def execute(self, context):
         props = context.scene.ft_props
-        selected_mesh = [obj for obj in context.selected_objects if obj.type == 'MESH']
-        if selected_mesh:
-            # active object MUST be 'MESH' type, otherwise an exception occurs (context is incorrect)
-            # ask a question to somebody, why this happens???
-            context.view_layer.objects.active = selected_mesh[0]
+        if props.selection_only_for_optimisation:
+            objects = [ob for ob in context.selected_objects if ob.type == 'MESH']
         else:
+            objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+
+        if not objects:
             self.report({'WARNING'}, 'Nothing to optimise')
             return {'CANCELLED'}
 
+        # active object MUST be 'MESH' type, otherwise an exception occurs (context is incorrect)
+        # ask a question to somebody, why this happens???
+        context.view_layer.objects.active = objects[0]
+
         # think how to optimise this
         bpy.ops.object.select_all(action='DESELECT')
-        for objects_optimised, obj in enumerate(selected_mesh, 1):
+        for ob_count, ob in enumerate(objects, start=1):
+            ob.select_set(True)
             if props.remove_doubles_enabled:
                 bpy.ops.object.mode_set(mode='EDIT')
                 bpy.ops.mesh.select_all(action='SELECT')
@@ -116,19 +151,13 @@ class FT_OT_mesh_optimisation(Operator):
                 bpy.ops.object.editmode_toggle()
 
             if props.shade_smooth_enabled:
-                obj.select_set(True)
                 bpy.ops.object.shade_smooth(use_auto_smooth=True)
-                obj.select_set(False)
+            ob.select_set(False)
 
-        # selecting back mesh objects
-        for obj in selected_mesh:
-            obj.select_set(True)
-
-        if objects_optimised == 1:
-            self.report({'INFO'}, f'{objects_optimised} mesh object successfully optimised')
+        if ob_count == 1:
+            self.report({'INFO'}, f'{ob_count} mesh object successfully optimised')
         else:
-            self.report({'INFO'}, f'{objects_optimised} mesh objects successfully optimised')
-        print('[DBDMI]: Mesh optimised executed')
+            self.report({'INFO'}, f'{ob_count} mesh objects successfully optimised')
 
         return {'FINISHED'}
 
@@ -198,60 +227,25 @@ class FT_OT_time_update(Operator):
         return {'FINISHED'}
 
 
-class FT_OT_remove_mesh_without_uv(Operator):
-    bl_idname = "ft.remove_all_meshes_with_no_uv_map"
-    bl_label = "Remove all meshes with no UV map"
-
-    def execute(self, context):
-        bpy.ops.object.select_all(action='DESELECT')
-        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
-        for ob in objects:
-            uv_layers_names = [uv.name for uv in ob.data.uv_layers]
-            print(f'{ob.name=}, {uv_layers_names=}')
-            if not uv_layers_names:
-                bpy.data.objects[ob.name].select_set(True)  # Blender 2.8x
-                bpy.ops.object.delete()
-
-        return {'FINISHED'}
-
-
-class FT_OT_remove_useless_uv(Operator):
-    bl_idname = "ft.remove_useless_uv"
-    bl_label = "Remove useless UV map"
+class FT_OT_remove_mesh_without_something(Operator):
+    bl_idname = "ft.remove_meshes_without_something"
+    bl_label = "Remove mesh"
 
     def execute(self, context):
         props = context.scene.ft_props
+        if props.selection_only_for_mesh_removal:
+            objects = [ob for ob in context.selected_objects if ob.type == 'MESH']
+        else:
+            objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+
         bpy.ops.object.select_all(action='DESELECT')
 
-        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
-
         for ob in objects:
-            uv_layers_names = [uv.name for uv in bpy.data.meshes[ob.name].uv_layers]
-            print(f'{ob.name=}, {uv_layers_names=}')
-            for uv in uv_layers_names:
-                if uv != 'uv_2':
-                    ob.data.uv_layers[uv].active = True
-                try:
-                    bpy.ops.mesh.uv_texture_remove()
-                except RuntimeError:
-                    continue
-
-        # if 'uv_2' in uv_layers_names:
-        #     bpy.data.meshes[ob.name].uv_layers["uv_2"].active_render = True
-
-        return {'FINISHED'}
-
-
-class FT_OT_remove_mesh_without_material(Operator):
-    bl_idname = "ft.remove_meshes_with_no_materials"
-    bl_label = "Remove all meshes with no materials"
-
-    def execute(self, context):
-        bpy.ops.object.select_all(action='DESELECT')
-        objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
-        for ob in objects:
-            ob_materials = list(ob.material_slots)
-            if not ob_materials:
+            if props.remove_mesh_with_no_material and not list(ob.material_slots):
+                ob.select_set(True)
+                bpy.ops.object.delete(use_global=True)
+                continue
+            if props.remove_mesh_with_no_uv and not list(ob.data.uv_layers):
                 ob.select_set(True)
                 bpy.ops.object.delete(use_global=True)
 
@@ -277,9 +271,20 @@ class FT_OT_fix_rotation(Operator):
         return {'FINISHED'}
 
 
-class FT_OT_fix_mirror(Operator):
-    bl_idname = "ft.fix_mirror"
-    bl_label = "Fix mirror"
+class FT_OT_fix_scale(Operator):
+    bl_idname = "ft.fix_scale"
+    bl_label = "Fix scale"
+
+    def execute(self, context):
+        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.transform.resize(value=(0.01, 0.01, 0.01))
+        bpy.ops.view3d.view_all(center=False)
+        return {'FINISHED'}
+
+
+class FT_OT_fix_x_axis_mirror(Operator):
+    bl_idname = "ft.fix_x_axis_mirror"
+    bl_label = "Fix X-axis mirror"
 
     def execute(self, context):
         bpy.ops.object.select_all(action='SELECT')
@@ -294,8 +299,71 @@ class FT_OT_fix_mirror(Operator):
         return {'FINISHED'}
 
 
-# operators end
+class FT_OT_use_as_ground(Operator):
+    bl_idname = "ft.use_as_ground"
+    bl_label = "Use as ground"
 
+    def execute(self, context):
+        object = context.active_object
+        # enter edit mode
+        bpy.ops.object.editmode_toggle()
+
+        # select all verts
+        bpy.ops.mesh.select_all(action='SELECT')
+
+        # snap 3D cursor to selected
+        bpy.ops.view3d.snap_cursor_to_selected()
+
+        # ezit edit mode
+        bpy.ops.object.editmode_toggle()
+
+        # set origin to 3D cursor
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+
+        # save inverse location
+        location = object.location * -1
+
+        # clear location
+        bpy.ops.object.location_clear(clear_delta=False)
+
+        # select all other objects
+        bpy.ops.object.select_all(action='INVERT')
+        bpy.ops.transform.translate(value=location)
+
+        return {'FINISHED'}
+
+
+class FT_OT_set_desired_uv(Operator):
+    bl_idname = "ft.set_desired_uv"
+    bl_label = "Set desired UV"
+
+    def execute(self, context):
+        props = context.scene.ft_props
+
+        if props.selection_only_for_uv_set:
+            objects = [ob for ob in context.selected_objects if ob.type == 'MESH']
+        else:
+            objects = [ob for ob in bpy.data.objects if ob.type == 'MESH']
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        if not objects:
+            self.report({'WARNING'}, 'Nothing to do')
+            return {'CANCELLED'}
+            # active object MUST be 'MESH' type, otherwise an exception occurs (context is incorrect)
+            # ask a question to somebody, why this happens???
+        context.view_layer.objects.active = objects[0]
+
+        for ob in objects:
+            uv_layers_names = [uv.name for uv in ob.data.uv_layers]
+            if props.desired_uv_map in uv_layers_names:
+                ob.data.uv_layers[props.desired_uv_map].active = True
+                ob.data.uv_layers[props.desired_uv_map].active_render = True
+
+        return {'FINISHED'}
+
+
+# operators end
 
 
 # panels ---------------------------------------------------------------------------------------------------------------
@@ -316,16 +384,44 @@ class FT_PT_ninja_ripper(FT_common_panel, Panel):
         row.operator('ft.fix_rotation')
 
         row = layout.row()
-        row.operator('ft.fix_mirror')
+        row.operator('ft.fix_x_axis_mirror')
 
         row = layout.row()
-        row.operator('ft.remove_meshes_with_no_materials')
+        row.operator('ft.use_as_ground')
 
         row = layout.row()
-        row.operator('ft.remove_all_meshes_with_no_uv_map')
+        row.operator('ft.fix_scale')
 
         row = layout.row()
-        row.operator('ft.remove_useless_uv')
+        if props.selection_only_for_mesh_removal:
+            objects = [ob for ob in context.selected_objects if ob.type == "MESH"]
+        else:
+            objects = [ob for ob in bpy.data.objects if ob.type == "MESH"]
+        text = f'Only selected objects ({len(objects)})'
+        row.prop(props, 'selection_only_for_mesh_removal', text=text)
+
+        row = layout.row()
+        row.prop(props, 'remove_mesh_with_no_material')
+
+        row = layout.row()
+        row.prop(props, 'remove_mesh_with_no_uv')
+
+        row = layout.row()
+        row.operator('ft.remove_meshes_without_something')
+
+        row = layout.row()
+
+        row.prop(props, 'desired_uv_map')
+
+        row = layout.row()
+        if props.selection_only_for_uv_set:
+            objects = [ob for ob in context.selected_objects if ob.type == "MESH"]
+        else:
+            objects = [ob for ob in bpy.data.objects if ob.type == "MESH"]
+        text = f'Only selected objects ({len(objects)})'
+        row.prop(props, 'selection_only_for_uv_set', text=text)
+
+        row.operator('ft.set_desired_uv')
 
 
 class FT_PT_mesh_optimisation(FT_common_panel, Panel):
@@ -360,12 +456,20 @@ class FT_PT_mesh_optimisation(FT_common_panel, Panel):
             row.prop(props, 'smooth_angle')
 
         row = layout.row()
-        row.label(text=f'Mesh objects selected: {len([obj for obj in context.selected_objects if obj.type == "MESH"])}')
         row.operator('ft.reset_opt_params')
 
         row = layout.row()
         row.scale_y = 1.5
-        row.operator('ft.optimise_mesh')
+        row.prop(props, 'selection_only_for_optimisation')
+        if props.selection_only_for_optimisation:
+            objects = [ob for ob in context.selected_objects if ob.type == "MESH"]
+        else:
+            objects = [ob for ob in bpy.data.objects if ob.type == "MESH"]
+        if not len(objects):
+            text = 'No objects'
+        else:
+            text = f'Optimise ({len(objects)}) objects'
+        row.operator('ft.optimise_objects', text=text, icon='SELECT_EXTEND')
 
 
 class FT_PT_mesh_translation(FT_common_panel, Panel):
@@ -411,19 +515,19 @@ class FT_PT_test(FT_common_panel, Panel):
 
 
 # panels end
-
 classes = [
     FT_scene_props,
-    FT_OT_mesh_optimisation,
+    FT_OT_optimise_objects,
     FT_OT_reset_opt_params,
     FT_OT_loc_rot_scale_to_active_object,
     FT_OT_test,
     FT_OT_time_update,
-    FT_OT_remove_mesh_without_uv,
-    FT_OT_remove_useless_uv,
-    FT_OT_remove_mesh_without_material,
+    FT_OT_remove_mesh_without_something,
     FT_OT_fix_rotation,
-    FT_OT_fix_mirror,
+    FT_OT_fix_scale,
+    FT_OT_fix_x_axis_mirror,
+    FT_OT_use_as_ground,
+    FT_OT_set_desired_uv,
     FT_PT_mesh_optimisation,
     FT_PT_mesh_translation,
     FT_PT_test,
