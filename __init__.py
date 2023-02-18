@@ -296,6 +296,7 @@ class FT_OT_fix_x_axis_mirror(Operator):
                                  snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST',
                                  use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True,
                                  use_snap_selectable=False)
+        bpy.ops.view3d.view_all(center=False)
         return {'FINISHED'}
 
 
@@ -381,6 +382,7 @@ class FT_PT_ninja_ripper(FT_common_panel, Panel):
         props = context.scene.ft_props
 
         row = layout.row()
+        row.label(text='Only in edit mode:')
         row.operator('ft.fix_rotation')
 
         row = layout.row()
